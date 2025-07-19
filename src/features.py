@@ -1,15 +1,22 @@
-from datetime import datetime
-
 import pandas as pd
 
-
 def extract_wallet_features(data):
-    df = pd.DataFrame(data)
+    records = []
 
-    df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s', errors='coerce')
-    df = df[df['timestamp'].notna()]  # remove rows with invalid timestamp
+    for tx in data:
+        try:
+            records.append({
+                'wallet': tx.get('userWallet'),
+                'type': tx.get('action').lower(),
+                'amount': float(tx['actionData'].get('amount', 0)) / 1e6,  # USDC, normalize
+                'reserve': tx['actionData'].get('assetSymbol', 'UNKNOWN'),
+                'timestamp': pd.to_datetime(tx.get('timestamp'), unit='s')
+            })
+        except Exception as e:
+            print("Skipping record due to error:", e)
 
-    grouped = df.groupby('user')
+    df = pd.DataFrame(records)
+    grouped = df.groupby('wallet')
 
     features = []
 
